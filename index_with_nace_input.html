@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html lang="sk">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KyberTEQ - NIS2 Checker</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+        .result-card {
+            border-left: 4px solid;
+        }
+        .result-zakladny {
+            border-left-color: #EF4444; <červená - pri výsledku NIS2 - základný subjekt>
+        }
+        .result-dolezity {
+            border-left-color: #F59E0B;
+        }
+        .result-mimo {
+            border-left-color: #10B981;
+        }
+        .result-unknown {
+            border-left-color: #6B7280;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+            body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+<div class="min-h-screen flex flex-col">
+<header class="text-white shadow-lg" style="background-color: #009279;">
+<div class="container mx-auto px-4 py-4">
+<div class="flex justify-between items-center">
+<div class="text-lg font-semibold">KyberTEQ</div>
+<h1 class="text-2xl font-bold text-center flex-1">NIS2 Checker</h1>
+<div class="text-sm text-right hidden md:block" style="min-width: 250px;">
+<span>Hodnotenie relevancie smernice NIS2 a zákona č. 69/2018 Z. z.</span>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow container mx-auto px-4 py-8">
+<div class="max-w-4xl mx-auto">
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+<h2 class="text-xl font-bold mb-4 text-black">Údaje o organizácii</h2>
+<form class="space-y-4" id="evaluationForm">
+<div>
+<label class="block font-medium" for="naceCode">Kód NACE</label>
+<input class="w-full border border-gray-300 rounded-md p-2 mt-1" id="naceCode" list="naceCodes" name="naceCode" placeholder="Zadajte alebo vyberte kód NACE"/>
+<datalist id="naceCodes"></datalist>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1" for="naceCode">NACE kód *</label>
+<p class="text-xs text-gray-500 mb-2">Vyberte NACE kód vašej firmy z rozbaľovacieho zoznamu alebo zadajte manuálne. NACE kód vašej firmy nájdete na <a class="text-blue-600 underline" href="https://finstat.sk" target="_blank">Finstat.sk</a></p>
+<div class="relative">
+<input class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" id="naceCodeInput" list="naceDatalist" name="naceCode" placeholder="Zadajte alebo vyberte NACE kód" required="" type="text"/>
+<datalist id="naceDatalist">
+<!-- Bude naplnené JavaScriptom -->
+</datalist>
+</div>
+<p class="mt-1 text-sm text-gray-500" id="naceDescription"></p>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1" for="employees">Počet zamestnancov *</label>
+<input class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" id="employees" min="0" name="employees" placeholder="napr. 70" required="" type="number"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1" for="revenue">Ročný obrat (v mil. EUR) *</label>
+<input class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" id="revenue" min="0" name="revenue" placeholder="napr. 20" required="" step="0.1" type="number"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-1" for="description">Popis činnosti (voliteľné)</label>
+<textarea class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" id="description" name="description" placeholder="Stručný popis činnosti, klientela, poskytované služby..." rows="2"></textarea>
+</div>
+</div>
+<div class="hidden border-t pt-4 mt-4 border-gray-200" id="exemptionQuestions">
+<h3 class="font-medium text-gray-800 mb-3">Doplňujúce otázky na výnimky</h3>
+<p class="text-sm text-gray-600 mb-4">Aj keď vaša organizácia nespĺňa veľkostné kritérium, mohla by patriť pod zákon, ak platí niektoré z nasledujúceho:</p>
+<div class="space-y-2">
+<div class="flex items-start">
+<input class="mt-1" id="criticalServices" name="criticalServices" type="checkbox"/>
+<label class="ml-2 text-sm text-gray-700" for="criticalServices">
+<span class="font-medium">Poskytujete služby, ktoré sú kľúčové pre fungovanie spoločnosti?</span>
+<span class="block text-xs text-gray-500">(napr. nemocnica, vodárenská spoločnosť, distribúcia energie)</span>
+</label>
+</div>
+<div class="flex items-start">
+<input class="mt-1" id="subcontractor" name="subcontractor" type="checkbox"/>
+<label class="ml-2 text-sm text-gray-700" for="subcontractor">
+<span class="font-medium">Ste subdodávateľom alebo technologickým partnerom subjektu, ktorý je už klasifikovaný ako základný alebo dôležitý?</span>
+</label>
+</div>
+<div class="flex items-start">
+<input class="mt-1" id="designated" name="designated" type="checkbox"/>
+<label class="ml-2 text-sm text-gray-700" for="designated">
+<span class="font-medium">Boli ste určení ako významný subjekt zo strany NBÚ alebo iného štátneho orgánu?</span>
+</label>
+</div>
+</div>
+</div>
+<div class="flex justify-between pt-4 border-t border-gray-200">
+<button class="px-6 py-2 text-white rounded-md transition focus:outline-none focus:ring-2" style="background-color: #009279; hover:background-color: #007a66; focus:ring-color: #007a66;" type="submit">
+                                Vyhodnotiť
+                            </button>
+<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" id="resetButton" type="button">
+                                Resetovať formulár
+                            </button>
+</div>
+</form>
+</div>
+<div class="hidden" id="resultSection">
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-xl font-bold text-black">Výsledok hodnotenia</h2>
+<div class="space-x-2">
+<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" id="printButton" title="Vytlačiť">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 9V4h12v5M6 18h12v-6H6v6zM6 14h12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition" id="exportPdfButton" title="Exportovať do PDF">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="00 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="px-6 py-2 text-white rounded-md transition focus:outline-none focus:ring-2" id="newCheckButton" style="background-color: #009279; hover:background-color: #007a66; focus:ring-color: #007a66;">
+                                    Nové hodnotenie
+                                </button>
+</div>
+</div>
+<div id="resultContent">
+<div class="border-b border-gray-200 pb-4 mb-4">
+<h3 class="font-medium text-gray-800 mb-3">Vstupné údaje</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<p class="text-sm text-gray-600">NACE kód</p>
+<p class="font-medium" id="resultNaceCode"></p>
+</div>
+<div>
+<p class="text-sm text-gray-600">Popis činnosti podľa NACE</p>
+<p class="font-medium" id="resultNaceDesc"></p>
+</div>
+<div>
+<p class="text-sm text-gray-600">Počet zamestnancov</p>
+<p class="font-medium" id="resultEmployees"></p>
+</div>
+<div>
+<p class="text-sm text-gray-600">Ročný obrat</p>
+<p class="font-medium" id="resultRevenue"></p>
+</div>
+</div>
+</div>
+<div class="border-b border-gray-200 pb-4 mb-4">
+<h3 class="font-medium text-gray-800 mb-3">Hodnotenie podľa smernice NIS2</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<p class="text-sm text-gray-600">Sektor</p>
+<p class="font-medium" id="resultSector"></p>
+</div>
+<div>
+<p class="text-sm text-gray-600">Podsektor</p>
+<p class="font-medium" id="resultSubsector"></p>
+</div>
+</div>
+<div class="mt-4">
+<p class="text-sm text-gray-600">Príklady činností v danom sektore</p>
+<p class="font-medium" id="resultExamples"></p>
+</div>
+<div class="mt-4">
+<p class="text-sm text-gray-600">Závislosti a podmienky</p>
+<p class="font-medium" id="resultDependencies"></p>
+</div>
+</div>
+<div class="mb-4" id="conclusionSection">
+<div class="result-card p-4 rounded-md mb-4" id="resultStatusCard">
+<h3 class="font-bold text-lg mb-2">Záver hodnotenia</h3>
+<p class="text-lg font-medium" id="resultStatus"></p>
+<p class="text-sm mt-2" id="resultSizeEvaluation"></p>
+</div>
+<h3 class="font-medium text-gray-800 mb-3">Odporúčané ďalšie kroky</h3>
+<div class="text-sm bg-gray-50 p-4 rounded-md" id="resultRecommendations"></div>
+</div>
+<div class="text-xs text-gray-500 mt-6" id="evaluationNote">
+<p>
+<strong>Poznámka:</strong> Toto hodnotenie slúži ako orientačná pomôcka na posúdenie relevancie smernice NIS2 a zákona č. 69/2018 Z. z. v znení novely z roku 2024. Konečné rozhodnutie o klasifikácii subjektu je v kompetencii NBÚ. V prípade nejasností odporúčame konzultovať s bezpečnostným špecialistom, právnym oddelením alebo priamo s NBÚ pre vyhodnotenie špecifickej situácie.</p>
+<p>
+<strong>Základné pojmy:</strong><br/>
+  1. Základný subjekt = Kľúčová entita = SEKTOR S VYSOKOU ÚROVŇOU KRITICKOSTI (príloha 1 zákona č. 69/2018 Z. z.)<br/>
+  2. Dôležitá entita = INÉ KRITICKÉ SEKTORY (príloha 2 zákona č. 69/2018 Z. z.)
+</p>
+<p class="mt-2">Dátum hodnotenia: <span id="evaluationDate"></span></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-gray-100 border-t border-gray-200 py-4">
+<div class="container mx-auto px-4">
+<div class="text-center text-gray-600 text-sm">
+<p>NIS2 Checker - nástroj na hodnotenie relevancie smernice NIS2 a zákona č. 69/2018 Z. z.</p>
+</div>
+</div>
+</footer>
+</div>
+<script>
+fetch('naceData.json')
+  .then(response => response.json())
+  .then(data => {
+    naceDataCache = data;
+    populateNaceDatalist();
+  })
+  .catch(error => console.error('Chyba pri načítaní JSON:', error));
+
+function populateNaceDatalist() {
+  const datalist = document.getElementById("naceCodes");
+  if (!datalist || !naceDataCache.naceAllCodes) return;
+
+  naceDataCache.naceAllCodes.forEach(code => {
+    const option = document.createElement("option");
+    option.value = code;
+    datalist.appendChild(option);
+  });
+}
+</script></body>
+</html>
