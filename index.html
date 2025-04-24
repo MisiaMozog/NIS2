@@ -219,5 +219,16 @@ fetch('naceData.json')
     populateNaceDatalist();
   })
   .catch(error => console.error('Chyba pri načítaní JSON:', error));
+        // ↓↓↓ TU pridaj túto funkciu ↓↓↓
+  function populateNaceDatalist() {
+    const datalist = document.getElementById("naceCodes");
+    if (!datalist || !naceDataCache.naceAllCodes) return;
+
+    naceDataCache.naceAllCodes.forEach(code => {
+      const option = document.createElement("option");
+      option.value = code;
+      datalist.appendChild(option);
+    });
+  }
 </script></body>
 </html>
